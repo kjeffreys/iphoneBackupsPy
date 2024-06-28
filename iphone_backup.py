@@ -3,6 +3,11 @@ import os
 import shutil
 import zipfile
 
+from hachoir.metadata import extractMetadata
+from hachoir.parser import createParser
+from PIL import Image
+from PIL.ExifTags import TAGS
+
 
 def extract_zip(file_path, extract_to):
     """
@@ -30,9 +35,58 @@ def is_file_type(file_path, extensions):
     return file_path.lower().endswith(extensions)
 
 
+def get_image_creation_date(file_path):
+    """
+    Gets the creation date of an image file from its EXIF data.
+
+    Args:
+        file_path (str): The path to the image file.
+
+    Returns:
+        datetime.datetime or None: The creation date of the image
+        file or None if not found.
+    """
+    try:
+        image = Image.open(file_path)
+        exif_data = image._getexif()
+        if exif_data:
+            for tag, value in exif_data.items():
+                tag_name = TAGS.get(tag, tag)
+                if tag_name == "DateTimeOriginal":
+                    return datetime.datetime.strptime(
+                        value, "%Y:%m:%d %H:%M:%S"
+                    )  # noqa: E501
+    except Exception as e:
+        print(f"Error getting image creation date: {e}")
+    return None
+
+
+def get_video_creation_date(file_path):
+    """
+    Gets the creation date of a video file from its metadata.
+
+    Args:
+        file_path (str): The path to the video file.
+
+    Returns:
+        datetime.datetime or None: The creation date of the video file
+        or None if not found.
+    """
+    try:
+        parser = createParser(file_path)
+        metadata = extractMetadata(parser)
+        if metadata:
+            creation_date = metadata.get("creation_date")
+            if creation_date:
+                return creation_date
+    except Exception as e:
+        print(f"Error getting video creation date: {e}")
+    return None
+
+
 def get_creation_date(file_path):
     """
-    Gets the creation date of a file.
+    Gets the creation date of a file (image or video).
 
     Args:
         file_path (str): The path to the file.
@@ -40,8 +94,19 @@ def get_creation_date(file_path):
     Returns:
         datetime.datetime: The creation date of the file.
     """
-    t = os.path.getmtime(file_path)
-    return datetime.datetime.fromtimestamp(t)
+    creation_date = None
+    if is_file_type(file_path, (".jpeg", ".jpg", ".png", ".heif")):
+        creation_date = get_image_creation_date(file_path)
+    elif is_file_type(file_path, (".mp4", ".mov", ".avi")):
+        creation_date = get_video_creation_date(file_path)
+
+    # Fallback to last modified time if no valid creation date is found
+    if not creation_date:
+        creation_date = datetime.datetime.fromtimestamp(
+            os.path.getmtime(file_path)
+        )  # noqa: E501
+
+    return creation_date
 
 
 def generate_unique_filename(directory, filename):
@@ -81,7 +146,7 @@ def organize_files(source_dir, dest_dir):
     remaining_files = []
 
     picture_extensions = (".jpeg", ".jpg", ".png", ".heif")
-    video_extensions = (".mp4", ".mov")
+    video_extensions = (".mp4", ".mov", ".avi")
     audio_extensions = ".wav"
 
     for root, dirs, files in os.walk(source_dir):
@@ -101,7 +166,9 @@ def organize_files(source_dir, dest_dir):
                 remaining_files.append(file_path)
                 continue
 
-            target_dir = os.path.join(dest_dir, "kids", year, month, category)
+            target_dir = os.path.join(
+                dest_dir, "family", year, month, category
+            )  # noqa: E501
             if not os.path.exists(target_dir):
                 os.makedirs(target_dir)
 
@@ -148,13 +215,13 @@ def process_zip_and_organize_files():
     # Print copied files
     print("Copied and organized files:")
     for file in copied_files:
-        print(file)
+        print(file.encode("utf-8").decode("utf-8"))
 
     # Print remaining files
     if remaining_files:
         print("\nFiles not processed (remaining in the extracted directory):")
         for file in remaining_files:
-            print(file)
+            print(file.encode("utf-8").decode("utf-8"))
 
     # Clean up only if there are no remaining files
     if not remaining_files:
@@ -178,8 +245,9 @@ def organize_existing_files():
     Organizes the files from a predefined source directory into a
     destination directory based on their creation date.
     """
-    source_dir = "/path/to/existing/files"
-    dest_dir = "/path/to/destination/directory"
+    drive_letter = "E:"
+    source_dir = os.path.join(drive_letter, "Lucy_Backup")
+    dest_dir = drive_letter
 
     # Organize the files
     copied_files, remaining_files = organize_files(source_dir, dest_dir)
@@ -187,13 +255,13 @@ def organize_existing_files():
     # Print copied files
     print("Copied and organized files:")
     for file in copied_files:
-        print(file)
+        print(file.encode("utf-8").decode("utf-8"))
 
     # Print remaining files
     if remaining_files:
         print("\nFiles not processed (remaining in the source directory):")
         for file in remaining_files:
-            print(file)
+            print(file.encode("utf-8").decode("utf-8"))
 
 
 if __name__ == "__main__":
