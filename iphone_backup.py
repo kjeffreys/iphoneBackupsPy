@@ -1,6 +1,7 @@
 import datetime
 import os
 import shutil
+import time
 import zipfile
 
 from hachoir.metadata import extractMetadata
@@ -187,8 +188,17 @@ def clean_up(directory):
     Args:
         directory (str): The directory to delete.
     """
-    if os.path.exists(directory):
-        shutil.rmtree(directory)
+    retry_count = 3
+    retry_delay = 1  # seconds
+    for _ in range(retry_count):
+        try:
+            if os.path.exists(directory):
+                shutil.rmtree(directory)
+            break
+        except PermissionError as e:
+            print(f"PermissionError: {e}")
+            print(f"Retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)
 
 
 def process_zip_and_organize_files():
@@ -199,9 +209,9 @@ def process_zip_and_organize_files():
     the files into a destination directory based on their creation date,
     and performs cleanup if all files are processed.
     """
-    download_dir = "/path/to/downloaded/zips"
-    extract_to = "/path/to/extracted/files"
-    dest_dir = "/path/to/destination/directory"
+    download_dir = os.path.join("C:\\", "Users", "aj282", "Downloads")
+    extract_to = os.path.join("E:\\", "iCloud Photos")
+    dest_dir = "E:\\"
 
     # Assume the downloaded zip file is named 'iCloud_backup.zip'
     zip_file_path = os.path.join(download_dir, "iCloud_backup.zip")
