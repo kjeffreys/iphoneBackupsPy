@@ -1,3 +1,10 @@
+"""
+This script processes and organizes files based on their creation dates.
+
+It can extract zip files, identify file types, read EXIF data from images,
+and organize files into directories based on their creation dates.
+"""
+
 import datetime
 import os
 import shutil
@@ -8,6 +15,15 @@ from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
 from PIL import Image
 from PIL.ExifTags import TAGS
+
+from config import (  # noqa: F401
+    DEST_DIR,
+    DOWNLOAD_DIR,
+    DRIVE_LETTER,
+    EXTRACT_TO,
+    SOURCE_DIR,
+    ZIP_FILE_NAME,
+)
 
 
 def extract_zip(file_path, extract_to):
@@ -101,11 +117,10 @@ def get_creation_date(file_path):
     elif is_file_type(file_path, (".mp4", ".mov", ".avi")):
         creation_date = get_video_creation_date(file_path)
 
-    # Fallback to last modified time if no valid creation date is found
     if not creation_date:
         creation_date = datetime.datetime.fromtimestamp(
             os.path.getmtime(file_path)
-        )  # noqa: E501
+        )  # noqa : E501
 
     return creation_date
 
@@ -209,37 +224,27 @@ def process_zip_and_organize_files():
     the files into a destination directory based on their creation date,
     and performs cleanup if all files are processed.
     """
-    download_dir = os.path.join("C:\\", "Users", "aj282", "Downloads")
-    extract_to = os.path.join("E:\\", "iCloud Photos")
-    dest_dir = "E:\\"
+    zip_file_path = os.path.join(DOWNLOAD_DIR, ZIP_FILE_NAME)
 
-    # Assume the downloaded zip file is named 'iCloud_backup.zip'
-    zip_file_path = os.path.join(download_dir, "iCloud_backup.zip")
+    extract_zip(zip_file_path, EXTRACT_TO)
 
-    # Extract the zip file
-    extract_zip(zip_file_path, extract_to)
+    copied_files, remaining_files = organize_files(EXTRACT_TO, DEST_DIR)
 
-    # Organize the files
-    copied_files, remaining_files = organize_files(extract_to, dest_dir)
-
-    # Print copied files
     print("Copied and organized files:")
     for file in copied_files:
         print(file.encode("utf-8").decode("utf-8"))
 
-    # Print remaining files
     if remaining_files:
         print("\nFiles not processed (remaining in the extracted directory):")
         for file in remaining_files:
             print(file.encode("utf-8").decode("utf-8"))
 
-    # Clean up only if there are no remaining files
     if not remaining_files:
-        clean_up(extract_to)
+        clean_up(EXTRACT_TO)
         os.remove(zip_file_path)
         print(
-            "\nCleanup successful: All extracted files have been processed \
-                and directories removed."
+            "\nCleanup successful: All extracted files have been \
+                processed and directories removed."
         )
     else:
         print(
@@ -255,19 +260,12 @@ def organize_existing_files():
     Organizes the files from a predefined source directory into a
     destination directory based on their creation date.
     """
-    drive_letter = "E:"
-    source_dir = os.path.join(drive_letter, "Lucy_Backup")
-    dest_dir = drive_letter
+    copied_files, remaining_files = organize_files(SOURCE_DIR, DEST_DIR)
 
-    # Organize the files
-    copied_files, remaining_files = organize_files(source_dir, dest_dir)
-
-    # Print copied files
     print("Copied and organized files:")
     for file in copied_files:
         print(file.encode("utf-8").decode("utf-8"))
 
-    # Print remaining files
     if remaining_files:
         print("\nFiles not processed (remaining in the source directory):")
         for file in remaining_files:
